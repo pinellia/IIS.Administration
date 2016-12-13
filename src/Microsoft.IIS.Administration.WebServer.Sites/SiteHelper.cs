@@ -620,7 +620,8 @@ namespace Microsoft.IIS.Administration.WebServer.Sites
                 // HTTPS
                 if (binding.Protocol.Equals("https")) {
                     X509Certificate2 cert = null;
-                    IEnumerable<X509Certificate2> certs = CertificateHelper.GetCertificates(CertificateHelper.STORE_NAME, CertificateHelper.STORE_LOCATION);
+                    var sn = Enum.GetName(typeof(StoreName), StoreName.My);
+                    IEnumerable<X509Certificate2> certs = CertificateHelper.GetCertificates(sn, CertificateHelper.STORE_LOCATION);
                     string thumbprint = BitConverter.ToString(binding.CertificateHash)?.Replace("-", string.Empty);
 
                     foreach (var c in certs) {
@@ -630,7 +631,7 @@ namespace Microsoft.IIS.Administration.WebServer.Sites
                         }
                     }
 
-                    obj.certificate = CertificateHelper.ToJsonModelRef(cert, CertificateHelper.STORE_NAME, CertificateHelper.STORE_LOCATION);
+                    obj.certificate = CertificateHelper.ToJsonModelRef(cert, sn, CertificateHelper.STORE_LOCATION);
 
                     // Dispose
                     foreach(var c in certs) {

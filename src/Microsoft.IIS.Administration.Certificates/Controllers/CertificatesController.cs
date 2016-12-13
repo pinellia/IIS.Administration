@@ -21,27 +21,37 @@ namespace Microsoft.IIS.Administration.Certificates
         {            
             List<object> refs = new List<object>();
             Fields fields = Context.Request.GetFields();
-            const StoreName sn = CertificateHelper.STORE_NAME;
             const StoreLocation sl = CertificateHelper.STORE_LOCATION;
+            var certs = new Dictionary<string, IEnumerable<X509Certificate2>>();
 
-            // Filter for selecting certificates with specific purpose.
-            string intended_purpose = Context.Request.Query["intended_purpose"];
+            // Filter (intended_purpose)
+            string intendedPurpose = Context.Request.Query["intended_purpose"];
 
-            var certs = CertificateHelper.GetCertificates(sn, sl);
+            // Filter (store_name)
+            string storeName = Context.Request.Query["store_name"];
 
-            if (intended_purpose != null) {
 
-                // Filter based on intended purpose, select only the certificates that contain a matching usage
-                certs = certs.Where(cert => {
+            foreach (string sn in CertificateHelper.SUPPORTED_STORES) {
 
-                    return CertificateHelper.GetEnhancedUsages(cert).Any(s => s.Equals(intended_purpose, StringComparison.OrdinalIgnoreCase));
-                }).ToList();
+                if (string.IsNullOrEmpty(storeName) || sn.Equals(storeName, StringComparison.OrdinalIgnoreCase)) {
+                    certs.Add(sn, CertificateHelper.GetCertificates(sn, sl));
+                }
+            }
+
+            if (intendedPurpose != null) {
+                foreach (var store in certs.Keys) {
+                    certs[store] = certs[store].Where(cert => {
+                        return CertificateHelper.GetEnhancedUsages(cert).Any(s => s.Equals(intendedPurpose, StringComparison.OrdinalIgnoreCase));
+                    });
+                }
             }
 
             // Build references in the scope of the store because references have dependence on store name and location
-            foreach (X509Certificate2 cert in certs) {
-                refs.Add(CertificateHelper.ToJsonModelRef(cert, sn, sl, fields));
-                cert.Dispose();
+            foreach (KeyValuePair<string, IEnumerable<X509Certificate2>> store in certs) {
+                foreach (var cert in store.Value) {
+                    refs.Add(CertificateHelper.ToJsonModelRef(cert, store.Key, sl, fields));
+                    cert.Dispose();
+                }
             }
 
             // All certs disposed.

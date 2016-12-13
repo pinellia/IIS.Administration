@@ -15,11 +15,11 @@ namespace Microsoft.IIS.Administration.Certificates
     {
         private static readonly Fields RefFields = new Fields("name", "id", "issued_by", "subject", "valid_to", "thumbprint");
 
-        public const StoreName STORE_NAME = StoreName.My;
+        public static readonly IEnumerable<string> SUPPORTED_STORES = new string[] { "My", "WebHosting" };
         public const StoreLocation STORE_LOCATION = StoreLocation.LocalMachine;
 
         // Contains IDisposables
-        public static IEnumerable<X509Certificate2> GetCertificates(StoreName storeName, StoreLocation storeLocation)
+        public static IEnumerable<X509Certificate2> GetCertificates(string storeName, StoreLocation storeLocation)
         {
             List<X509Certificate2> certs = new List<X509Certificate2>();
 
@@ -36,7 +36,7 @@ namespace Microsoft.IIS.Administration.Certificates
             return certs;
         }
 
-        public static X509Certificate2 GetCert(string thumbprint, StoreName storeName, StoreLocation storeLocation)
+        public static X509Certificate2 GetCert(string thumbprint, string storeName, StoreLocation storeLocation)
         {
             X509Certificate2 targetCert = null;
             using (X509Store store = new X509Store(storeName, storeLocation))
@@ -60,7 +60,7 @@ namespace Microsoft.IIS.Administration.Certificates
             return targetCert;
         }
 
-        public static object ToJsonModelRef(X509Certificate2 cert, StoreName storeName, StoreLocation storeLocation, Fields fields = null)
+        public static object ToJsonModelRef(X509Certificate2 cert, string storeName, StoreLocation storeLocation, Fields fields = null)
         {
             if (fields == null || !fields.HasFields) {
                 return ToJsonModel(cert, storeName, storeLocation, RefFields, false);
@@ -70,7 +70,7 @@ namespace Microsoft.IIS.Administration.Certificates
             }
         }
 
-        internal static object ToJsonModel(X509Certificate2 cert, StoreName storeName, StoreLocation storeLocation, Fields fields = null, bool full = true)
+        internal static object ToJsonModel(X509Certificate2 cert, string storeName, StoreLocation storeLocation, Fields fields = null, bool full = true)
         {
             if (cert == null) {
                 return null;
@@ -162,7 +162,7 @@ namespace Microsoft.IIS.Administration.Certificates
             // store
             if (fields.Exists("store")) {
                 obj.store = new {
-                    name = Enum.GetName(typeof(StoreName), storeName),
+                    name = JsonStoreName(storeName),
                     location = Enum.GetName(typeof(StoreLocation), storeLocation)
                 };
             }
@@ -204,6 +204,17 @@ namespace Microsoft.IIS.Administration.Certificates
                 return simpleName;
             }
             return cert.Thumbprint;
+        }
+
+        private static string JsonStoreName(string storeName)
+        {
+            var lower = storeName.ToLower();
+            switch (lower) {
+                case "webhosting":
+                    return "web_hosting";
+                default:
+                    return lower;
+            }
         }
     }
 }
